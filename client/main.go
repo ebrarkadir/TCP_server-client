@@ -5,23 +5,24 @@ import (
 	"fmt"
 	"net"
 )
+
 func main() {
-	conn, err := net.Dial("tcp4", ":7000")
+	conn, err := net.Dial("tcp4", "localhost:7000")
 	if err != nil {
 		panic(err)
 	}
 	defer conn.Close()
 
-	go func(){
-		for{
-			buff:= make([]byte, 8)
+	go func() {
+		for {
+			buff := make([]byte, 8)
 			_, err := conn.Read(buff[:])
 			if err != nil {
 				fmt.Println("read error:", err)
 				conn.Close()
 				break
 			}
-	
+
 			fmt.Printf("message from server: %s\n", buff)
 		}
 	}()
@@ -29,22 +30,20 @@ func main() {
 	for i := 0; i < 10; i++ {
 		_, err = conn.Write([]byte("Hello!!!"))
 		if err != nil {
-			fmt.Println("write error:", err) 
+			fmt.Println("write error:", err)
 		}
 	}
 
-	for{
-		select{}
+	for {
+		select {}
 	}
-	
 }
 
-const(
+const (
 	MessageTypeJSON = 1
 	MessageTypeText = 2
-	MessageTypeXML = 3
+	MessageTypeXML  = 3
 )
-
 
 /*
 0 1 2 3 | 4 5 6 7 | 8 N+
@@ -52,15 +51,15 @@ uint32  | uint32  | string
 type    | length  | data
 */
 
-func createMessage(mtype int, data string) []byte{
-	buf := make([]byte, 4 + 4 + len(data))
+func createMessage(mtype int, data string) []byte {
+	buf := make([]byte, 4+4+len(data))
 	binary.LittleEndian.PutUint32(buf[0:], uint32(mtype))
 	binary.LittleEndian.PutUint32(buf[4:], uint32(len(data)))
 	copy(buf[8:], []byte(data))
 	return buf
 }
 
-func readMessage(data []byte) (mtype, mlen uint32, msg string){
+func readMessage(data []byte) (mtype, mlen uint32, msg string) {
 	mtype = binary.LittleEndian.Uint32(data[0:])
 	mlen = binary.LittleEndian.Uint32(data[4:])
 	msg = string(data[8:])
