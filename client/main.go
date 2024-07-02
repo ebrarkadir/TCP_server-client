@@ -13,22 +13,9 @@ func main() {
 	}
 	defer conn.Close()
 
-	go func() {
-		for {
-			buff := make([]byte, 8)
-			_, err := conn.Read(buff[:])
-			if err != nil {
-				fmt.Println("read error:", err)
-				conn.Close()
-				break
-			}
-
-			fmt.Printf("message from server: %s\n", buff)
-		}
-	}()
-
 	for i := 0; i < 10; i++ {
-		_, err = conn.Write([]byte("Hello!!!"))
+		data := createMessage(MessageTypeText, "Hello from client")
+		_, err = conn.Write(data)
 		if err != nil {
 			fmt.Println("write error:", err)
 		}
