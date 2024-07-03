@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"net"
+	"time"
 )
 
 func main() {
@@ -13,13 +14,16 @@ func main() {
 	}
 	defer conn.Close()
 
-	for i := 0; i < 10; i++ {
+	start:= time.Now()
+	for i := 0; i < 150000; i++ {
 		data := createMessage(MessageTypeText, "Hello from client")
 		_, err = conn.Write(data)
 		if err != nil {
 			fmt.Println("write error:", err)
 		}
 	}
+	end := time.Since(start)
+	fmt.Println("duration time:", end)
 
 	for {
 		select {}

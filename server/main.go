@@ -4,9 +4,20 @@ import (
 	"encoding/binary"
 	"fmt"
 	"net"
+	"os"
+	"os/signal"
+	"runtime/pprof"
 )
 
 func main() {
+	f, err := os.Create("cpu.out")
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+	pprof.StartCPUProfile(f)
+	defer pprof.StopCPUProfile()
+
 	ls, err := net.Listen("tcp4", ":7000")
 	if err != nil {
 		panic(err)
@@ -14,21 +25,27 @@ func main() {
 
 	fmt.Println("connection ready!")
 
-	for {
-		conn, err := ls.Accept()
-		if err != nil {
-			fmt.Println("Connection failed:", err)
-			continue
+	go func() {
+		for {
+			conn, err := ls.Accept()
+			if err != nil {
+				fmt.Println("Connection failed:", err)
+				continue
+			}
+			go handler(conn) // Her bağlantıyı ayrı bir goroutine'de işlemek için go anahtar kelimesi kullanılır.
 		}
-		go handler(conn) // Her bağlantıyı ayrı bir goroutine'de işlemek için go anahtar kelimesi kullanılır.
-	}
+	}()
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	<-c
 }
 
 func handler(conn net.Conn) {
 	fmt.Println("Connection accepted:", conn.RemoteAddr().String())
 
 	for {
-		header := make([]byte, 8)
+		header := make([]byte, 512)
 		_, err := conn.Read(header) // read bufferından data okuyor.
 		if err != nil {
 			fmt.Println("Read error:", err)
@@ -36,6 +53,8 @@ func handler(conn net.Conn) {
 			break
 		}
 
+		_, _, _ = readMessage(header)
+		/*
 		mlen := binary.LittleEndian.Uint32(header[4:])
 		databuff := make([]byte, mlen)
 		_, err = conn.Read(databuff)
@@ -48,8 +67,8 @@ func handler(conn net.Conn) {
 		var messagebuf []byte
 		messagebuf = append(messagebuf, header...)
 		messagebuf = append(messagebuf, databuff...)
-		mtype, _, msg := readMessage(messagebuf)
-		fmt.Printf("type: %d, len: %d, msg: %s\n", mtype, mlen, msg)
+		_, _, _ = readMessage(messagebuf)
+		//fmt.Printf("type: %d, len: %d, msg: %s\n", mtype, mlen, msg)*/
 	}
 }
 
