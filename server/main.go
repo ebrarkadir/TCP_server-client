@@ -7,9 +7,11 @@ import (
 	"os"
 	"os/signal"
 	"runtime/pprof"
+	"unsafe"
 )
 
 func main() {
+	// CPU profil dosyası oluşturma
 	f, err := os.Create("cpu.out")
 	if err != nil {
 		panic(err)
@@ -18,13 +20,16 @@ func main() {
 	pprof.StartCPUProfile(f)
 	defer pprof.StopCPUProfile()
 
+	// TCP bağlantı dinleme
 	ls, err := net.Listen("tcp4", ":7000")
 	if err != nil {
 		panic(err)
 	}
+	defer ls.Close()
 
 	fmt.Println("connection ready!")
 
+	// Yeni bağlantıları kabul eden bir goroutine
 	go func() {
 		for {
 			conn, err := ls.Accept()
@@ -32,43 +37,41 @@ func main() {
 				fmt.Println("Connection failed:", err)
 				continue
 			}
-			go handler(conn) // Her bağlantıyı ayrı bir goroutine'de işlemek için go anahtar kelimesi kullanılır.
+			go handler(conn) // Her bağlantıyı ayrı bir goroutine'de işleme
 		}
 	}()
 
+	// Ctrl+C sinyalini yakalama ve programı düzgün kapatma
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 	<-c
 }
 
 func handler(conn net.Conn) {
+	defer conn.Close()
 	fmt.Println("Connection accepted:", conn.RemoteAddr().String())
 
 	for {
-		header := make([]byte, 512)
-		_, err := conn.Read(header) // read bufferından data okuyor.
+		header := make([]byte, 8)
+		_, err := conn.Read(header)
 		if err != nil {
 			fmt.Println("Read error:", err)
-			conn.Close()
 			break
 		}
 
-		_, _, _ = readMessage(header)
-		/*
 		mlen := binary.LittleEndian.Uint32(header[4:])
 		databuff := make([]byte, mlen)
 		_, err = conn.Read(databuff)
 		if err != nil {
 			fmt.Println("Read error:", err)
-			conn.Close()
 			break
 		}
 
 		var messagebuf []byte
 		messagebuf = append(messagebuf, header...)
 		messagebuf = append(messagebuf, databuff...)
-		_, _, _ = readMessage(messagebuf)
-		//fmt.Printf("type: %d, len: %d, msg: %s\n", mtype, mlen, msg)*/
+		mtype, mlen, msg := readMessage(messagebuf)
+		fmt.Printf("type: %d, len: %d, msg: %s\n", mtype, mlen, msg)
 	}
 }
 
@@ -95,6 +98,9 @@ func createMessage(mtype int, data string) []byte {
 func readMessage(data []byte) (mtype, mlen uint32, msg string) {
 	mtype = binary.LittleEndian.Uint32(data[0:])
 	mlen = binary.LittleEndian.Uint32(data[4:])
-	msg = string(data[8:])
+	//msg = string(data[8:])
+
+	msgBytes := data[8:]
+    msg = *(*string)(unsafe.Pointer(&msgBytes))
 	return mtype, mlen, msg
 }

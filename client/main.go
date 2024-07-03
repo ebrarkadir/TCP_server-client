@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"time"
+	"unsafe"
 )
 
 func main() {
@@ -14,20 +15,27 @@ func main() {
 	}
 	defer conn.Close()
 
-	start:= time.Now()
+	start := time.Now()
+	errorCount := 0
+
 	for i := 0; i < 150000; i++ {
 		data := createMessage(MessageTypeText, "Hello from client")
 		_, err = conn.Write(data)
 		if err != nil {
 			fmt.Println("write error:", err)
+			errorCount++
+			if errorCount > 10 {
+				fmt.Println("Too many errors, exiting loop")
+				break
+			}
 		}
 	}
-	end := time.Since(start)
-	fmt.Println("duration time:", end)
 
-	for {
-		select {}
-	}
+	duration := time.Since(start)
+	fmt.Println("duration time:", duration)
+
+	// Optional: Sleep for a short period to ensure all data is sent before closing the connection
+	time.Sleep(1 * time.Second)
 }
 
 const (
@@ -53,6 +61,9 @@ func createMessage(mtype int, data string) []byte {
 func readMessage(data []byte) (mtype, mlen uint32, msg string) {
 	mtype = binary.LittleEndian.Uint32(data[0:])
 	mlen = binary.LittleEndian.Uint32(data[4:])
-	msg = string(data[8:])
+	//msg = string(data[8:])
+
+	msgBytes := data[8:]
+    msg = *(*string)(unsafe.Pointer(&msgBytes))
 	return mtype, mlen, msg
 }
