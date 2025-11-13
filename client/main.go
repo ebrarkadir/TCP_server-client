@@ -34,7 +34,6 @@ func main() {
 	duration := time.Since(start)
 	fmt.Println("duration time:", duration)
 
-	// Optional: Sleep for a short period to ensure all data is sent before closing the connection
 	time.Sleep(1 * time.Second)
 }
 
