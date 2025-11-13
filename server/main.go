@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	// CPU profil dosyası oluşturma
+
 	f, err := os.Create("cpu.out")
 	if err != nil {
 		panic(err)
@@ -20,7 +20,6 @@ func main() {
 	pprof.StartCPUProfile(f)
 	defer pprof.StopCPUProfile()
 
-	// TCP bağlantı dinleme
 	ls, err := net.Listen("tcp4", ":7000")
 	if err != nil {
 		panic(err)
@@ -29,7 +28,6 @@ func main() {
 
 	fmt.Println("connection ready!")
 
-	// Yeni bağlantıları kabul eden bir goroutine
 	go func() {
 		for {
 			conn, err := ls.Accept()
@@ -37,11 +35,10 @@ func main() {
 				fmt.Println("Connection failed:", err)
 				continue
 			}
-			go handler(conn) // Her bağlantıyı ayrı bir goroutine'de işleme
+			go handler(conn) 
 		}
 	}()
 
-	// Ctrl+C sinyalini yakalama ve programı düzgün kapatma
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 	<-c
